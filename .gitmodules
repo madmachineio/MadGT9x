@@ -1,0 +1,3 @@
+[submodule "chal_export"]
+	path = chal_export
+	url = https://github.com/madmachineio/chal_export.git
