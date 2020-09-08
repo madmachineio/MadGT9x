@@ -1,7 +1,7 @@
 /*
- * Copyright (c) 2020 MADMACHINE
- *
- * SPDX-License-Identifier: Apache-2.0
+ * @Copyright (c) 2020, MADMACHINE LIMITED
+ * @Author: Frank Li(lgl88911@163.com)
+ * @SPDX-License-Identifier: MIT
  */
 
 #include <string.h>
@@ -106,7 +106,7 @@ static int gt9x_read_regs(unsigned char dev_addr,
 	// return swiftHal_i2cWriteRead(&i2c_touch, dev_addr, addr, 2, regs, reg_num);
 }
 
-int madGt9x_read(void)
+int madGt9x_read(madGt9x_key *keys, int key_num)
 {
 	unsigned char buf[GT9X_PER_TOUCH_LEN * GT9X_MAX_TOUCH];
 	int ret = 0;
@@ -147,6 +147,14 @@ int madGt9x_read(void)
 		if (touch_number == 0) {
 			for (i = 0; i < pre_touch_number; i++) {
 				// printk("Release %u %u\n", pre_touch[i].x, pre_touch[i].y);
+
+				if (ret < key_num) {
+					keys[ret].row = pre_touch[i].y;
+					keys[ret].column = pre_touch[i].x;
+					keys[ret].pressed = 0;
+					ret++;
+				}
+
 				if (key_callback != NULL) {
 					LOG_INF("Release[%d] %u %u\r\n", pre_touch[i].id, pre_touch[i].x, pre_touch[i].y);
 					key_callback(pre_touch[i].y, pre_touch[i].x, 0);
@@ -180,6 +188,13 @@ int madGt9x_read(void)
 			// LOG_INF("Current Touch %u %u", cur_touch[i].x, cur_touch[i].y);
 #ifdef TOUCH_CONTINUE
 			// printk("Touch %u %u -- %x\n", cur_touch[i].x, cur_touch[i].y, key_callback);
+			if (ret < key_num) {
+				keys[ret].row = cur_touch[i].y;
+				keys[ret].column = cur_touch[i].x;
+				keys[ret].pressed = 1;
+				ret++;
+			}
+
 			if (key_callback != NULL) {
 				LOG_INF("Touch[%d] %u %u\r\n", cur_touch[i].id, cur_touch[i].x, cur_touch[i].y);
 				key_callback(cur_touch[i].y, cur_touch[i].x, 1);
@@ -194,6 +209,13 @@ int madGt9x_read(void)
 			if (j >= pre_touch_number) {
 				LOG_INF("Touch[%d] %u %u\r\n", cur_touch[i].id, cur_touch[i].x, cur_touch[i].y);
 				// printk("Touch %u %u -- %x\n", cur_touch[i].x, cur_touch[i].y, key_callback);
+				if (ret < key_num) {
+					keys[ret].row = cur_touch[i].y;
+					keys[ret].column = cur_touch[i].x;
+					keys[ret].pressed = 1;
+					ret++;
+				}
+
 				if (key_callback != NULL) {
 					key_callback(cur_touch[i].y, cur_touch[i].x, 1);
 				}
@@ -212,6 +234,13 @@ int madGt9x_read(void)
 			if (j >= touch_number) {
 				LOG_INF("Release[%d] %u %u\r\n", pre_touch[i].id, pre_touch[i].x, pre_touch[i].y);
 				// printk("Release %u %u\n", cur_touch[i].x, cur_touch[i].y);
+				if (ret < key_num) {
+					keys[ret].row = pre_touch[i].y;
+					keys[ret].column = pre_touch[i].x;
+					keys[ret].pressed = 0;
+					ret++;
+				}
+
 				if (key_callback != NULL) {
 					key_callback(pre_touch[i].y, pre_touch[i].x, 0);
 				}
@@ -243,20 +272,20 @@ int madGt9x_read(void)
 }
 
 
-int madGt9x_init(int width, int height, int touch)
+int madGt9x_init(madGt9x_hw *hw, madGt9x_cfg *cfg)
 {
 	unsigned char version[GT9X_VERSION_LEN];
 	int ret = -1;
 	unsigned short check_sum;
 	unsigned short reg_num;
 
-	i2c_touch = swiftHal_i2cInit(I2CId1);
+	i2c_touch = hw->i2c;
 	if (i2c_touch == NULL) {
 		return -1;
 	}
 
-	gpio_rst = swiftHal_gpioInit(D3, dirOutput, pushPull);
-	gpio_int = swiftHal_gpioInit(D0, dirOutput, pushPull);
+	gpio_rst = hw->gpio_rst;
+	gpio_int = hw->gpio_int;
 
 	swiftHal_gpioWrite(gpio_rst, 0);
 	swiftHal_gpioWrite(gpio_int, 0);
@@ -276,8 +305,8 @@ int madGt9x_init(int width, int height, int touch)
 
 	swiftHal_msSleep(6);
 
-	swiftHal_gpioDeinit(gpio_int);
-	gpio_int = swiftHal_gpioInit(D0, dirInput, pullNone);
+	// swiftHal_gpioDeinit(gpio_int);
+	// gpio_int = swiftHal_gpioInit(D0, dirInput, pullNone);
 
 	ret = gt9x_read_regs(MADGT9X_I2C_ADDR,
 			     GT9X_REG_VERSION, version, GT9X_VERSION_LEN);
@@ -295,10 +324,10 @@ int madGt9x_init(int width, int height, int touch)
 		LOG_DBG("No support %c%c%c%c\r\n", version[0], version[1], version[2], version[3]);
 	}
 
-	gt9x_cfg_regs[1] = width & 0xFF;
-	gt9x_cfg_regs[2] = width >> 8;
-	gt9x_cfg_regs[3] = height & 0xFF;
-	gt9x_cfg_regs[4] = height >> 8;
+	gt9x_cfg_regs[1] = cfg->width & 0xFF;
+	gt9x_cfg_regs[2] = cfg->width >> 8;
+	gt9x_cfg_regs[3] = cfg->height & 0xFF;
+	gt9x_cfg_regs[4] = cfg->height >> 8;
 
 	reg_num = sizeof(gt9x_cfg_regs);
 	check_sum = 0;

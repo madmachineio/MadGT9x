@@ -1,5 +1,5 @@
 PROJECT(MADGT9X)
-SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/../extrenlib/lib) 
+SET(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/../externlib/lib) 
 
 include(./chal_export/flags.cmake)
 
