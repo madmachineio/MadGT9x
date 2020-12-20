@@ -7,11 +7,11 @@
 #include <string.h>
 #include <errno.h>
 
-#include "SwiftI2C.h"
-#include "SwiftDigitalIO.h"
-#include "SwiftPlatform.h"
+#include "swift_i2c.h"
+#include "swift_gpio.h"
+#include "swift_platform.h"
 
-#include "MadGt9x.h"
+#include "mad_gt9x.h"
 
 #define LOG_ERR
 #define LOG_INF
@@ -78,7 +78,7 @@ struct touch_point_info {
 static void *gpio_rst;
 static void *gpio_int;
 static void *i2c_touch;
-static madGt9x_callback_t key_callback = NULL;
+static mad_gt9x_callback_t key_callback = NULL;
 
 static int gt9x_write_regs(unsigned char dev_addr,
 			   unsigned short reg_addr, unsigned char *regs, unsigned short reg_num)
@@ -91,7 +91,7 @@ static int gt9x_write_regs(unsigned char dev_addr,
 	}
 	memcpy(&buf[GT9X_REG_ADDR_LEN], regs, reg_num);
 
-	return swiftHal_i2cWrite(i2c_touch, dev_addr, buf, reg_num + GT9X_REG_ADDR_LEN);
+	return swifthal_i2c_write(i2c_touch, dev_addr, buf, reg_num + GT9X_REG_ADDR_LEN);
 }
 
 
@@ -101,12 +101,12 @@ static int gt9x_read_regs(unsigned char dev_addr,
 	unsigned char addr[2] = { reg_addr >> 8, reg_addr & 0xFF };
 
 
-	swiftHal_i2cWrite(i2c_touch, dev_addr, addr, 2);
-	return swiftHal_i2cRead(i2c_touch, dev_addr, regs, reg_num);
-	// return swiftHal_i2cWriteRead(&i2c_touch, dev_addr, addr, 2, regs, reg_num);
+	swifthal_i2c_write(i2c_touch, dev_addr, addr, 2);
+	return swifthal_i2c_read(i2c_touch, dev_addr, regs, reg_num);
+	// return swifthal_i2c_writeRead(&i2c_touch, dev_addr, addr, 2, regs, reg_num);
 }
 
-int madGt9x_read(madGt9x_key *keys, int key_num)
+int mad_gt9x_read(mad_gt9x_key_t *keys, int key_num)
 {
 	unsigned char buf[GT9X_PER_TOUCH_LEN * GT9X_MAX_TOUCH];
 	int ret = 0;
@@ -272,7 +272,7 @@ int madGt9x_read(madGt9x_key *keys, int key_num)
 }
 
 
-int madGt9x_init(madGt9x_hw *hw, madGt9x_cfg *cfg)
+int mad_gt9x_init(mad_gt9x_hw_t *hw, mad_gt9x_cfg_t *cfg)
 {
 	unsigned char version[GT9X_VERSION_LEN];
 	int ret = -1;
@@ -287,23 +287,23 @@ int madGt9x_init(madGt9x_hw *hw, madGt9x_cfg *cfg)
 	gpio_rst = hw->gpio_rst;
 	gpio_int = hw->gpio_int;
 
-	swiftHal_gpioWrite(gpio_rst, 0);
-	swiftHal_gpioWrite(gpio_int, 0);
+	swifthal_gpio_set(gpio_rst, 0);
+	swifthal_gpio_set(gpio_int, 0);
 
-	swiftHal_msSleep(1);
+	swifthal_ms_sleep(1);
 
 	if (MADGT9X_I2C_ADDR == GT9X_I2C_ADDRESS_A) {
-		swiftHal_gpioWrite(gpio_int, 1);
+		swifthal_gpio_set(gpio_int, 1);
 	} else if (MADGT9X_I2C_ADDR == GT9X_I2C_ADDRESS_B) {
-		swiftHal_gpioWrite(gpio_int, 0);
+		swifthal_gpio_set(gpio_int, 0);
 	} else {
 		return -1;
 	}
 
-	swiftHal_msSleep(1);
-	swiftHal_gpioWrite(gpio_rst, 1);
+	swifthal_ms_sleep(1);
+	swifthal_gpio_set(gpio_rst, 1);
 
-	swiftHal_msSleep(6);
+	swifthal_ms_sleep(6);
 
 	// swiftHal_gpioDeinit(gpio_int);
 	// gpio_int = swiftHal_gpioInit(D0, dirInput, pullNone);
@@ -351,7 +351,7 @@ int madGt9x_init(madGt9x_hw *hw, madGt9x_cfg *cfg)
 		return -EINVAL;
 	}
 
-	swiftHal_msSleep(50);
+	swifthal_ms_sleep(50);
 	/*
 	   memset(buf, 0, sizeof(buf));
 	   ret = gt9x_read_regs(MADGT9X_I2C_ADDR,
@@ -368,7 +368,7 @@ int madGt9x_init(madGt9x_hw *hw, madGt9x_cfg *cfg)
 
 
 
-int madGt9x_configure(madGt9x_callback_t callback)
+int mad_gt9x_configure(mad_gt9x_callback_t callback)
 {
 	if (!callback) {
 		return -EINVAL;
@@ -379,12 +379,12 @@ int madGt9x_configure(madGt9x_callback_t callback)
 	return 0;
 }
 
-int madGt9x_start(int ms)
+int mad_gt9x_start(int ms)
 {
 	return 0;
 }
 
-int madGt9x_stop(void)
+int mad_gt9x_stop(void)
 {
 	return 0;
 }
